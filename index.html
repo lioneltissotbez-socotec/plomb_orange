@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Convertisseur dynamique du tableau PLOMB ORANGE</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; font-size:13px; }
+  .container { max-width:1200px; margin:0 auto; background:#fff; border-radius:10px; padding:18px; box-shadow:0 8px 24px rgba(0,0,0,0.08); }
+
+  h1{ font-weight:600; margin-bottom:6px; text-align:center; }
+  p.lead{ color:#52606d; margin-top:0; margin-bottom:12px; text-align:center; }
+
+  .upload {
+    border:2px dashed #40a9ff; border-radius:8px;
+    padding:18px; text-align:center; background:#f8fbff;
+    cursor:pointer; user-select:none;
+  }
+  .upload.dragover{ background:#eefaf1; border-color:#00b894; }
+
+  input[type=file]{ display:none; }
+
+  .btn{
+    display:inline-block; padding:8px 12px; border-radius:8px;
+    background:#2f80ed; color:#fff; border:none; cursor:pointer; font-size:13px;
+  }
+
+  .btn-secondary{
+    display:inline-block; background:#555; color:#fff;
+    padding:8px 14px; border-radius:8px; font-size:13px;
+    text-decoration:none; cursor:pointer; transition:0.2s ease;
+  }
+  .btn-secondary:hover{ background:#333; }
+
+  .copy-btn{
+    padding:6px 10px; border-radius:6px;
+    background:#555; color:#fff; border:none;
+    cursor:pointer; font-size:12px; float:right; margin-left:8px;
+  }
+
+  .stats{ display:flex; gap:12px; margin-top:12px; flex-wrap:wrap; }
+  .stat{ background:#f3f6ff; padding:10px; border-radius:8px; min-width:120px; text-align:center; }
+
+  .preview{ margin-top:18px; }
+  table{ width:90%; max-width:17cm; margin:10px auto; border-collapse:collapse; font-size:8pt; table-layout:fixed; border:1px solid #000; }
+  th, td{ padding:4px 5px; border:1px solid #000; vertical-align:top; word-wrap:break-word; }
+  .block-title{ font-weight:600; margin:6px 10%; font-size:13px; }
+  .notice{ text-align:center; font-size:13px; color:#00b894; display:none; margin-top:8px; }
+  .table-block{ margin-bottom:18px; padding:6px 0; clear:both; }
+</style>
+</head>
+
+<body>
+
+<!-- LOGO SOCOTEC -->
+<div style="text-align:center; padding:10px 0;">
+  <img src="https://lioneltissotbez-socotec.github.io/socotec-assets/logo.svg"
+       alt="Logo SOCOTEC"
+       style="max-height:60px; width:auto;">
+</div>
+
+<div class="container">
+
+  <h1>🔬 Convertisseur dynamique du tableau PLOMB ORANGE</h1>
+
+  <p class="lead">
+    Charge ton fichier Liciel, traite-le, puis colle les tableaux dans le modèle Word Orange.
+  </p>
+
+  <!-- BOUTONS OUTILS (TUTO + MODELE + NOTICE PDF) -->
+  <div style="text-align:center; margin-bottom:15px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+
+    <a href="https://socotecgroup-my.sharepoint.com/:v:/g/personal/lionel_tissotbez_socotec_com/ETl0UkW38X5OhqhHqiO5PCoB9PnLuwVHDDTwx9oxDAjijA?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVmZXJyZWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXcifX0%3D&e=in1p9C"
+       target="_blank" class="btn-secondary">🎬 Voir le tuto</a>
+
+    <a href="https://raw.githubusercontent.com/lioneltissotbez-socotec/plomb_orange/main/modele_plan.pptx"
+       download="Modele_Plan_PLOMB_ORANGE.pptx"
+       class="btn-secondary">📐 Télécharger le modèle de plan</a>
+
+    <a href="https://raw.githubusercontent.com/lioneltissotbez-socotec/plomb_orange/main/notice_orange.pdf"
+       target="_blank"
+       class="btn-secondary">📄 Notice Marché Orange</a>
+  </div>
+
+  <!-- ZONE UPLOAD + TRAITEMENT (remonté en haut) -->
+  <div style="display:flex; justify-content:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
+    <button class="btn" id="pickBtn">Choisir un fichier</button>
+    <button class="btn" id="processBtn" style="display:none;">▶️ Traiter et générer</button>
+  </div>
+
+  <!-- ZONE UPLOAD DRAG&DROP -->
+  <div id="uploadArea" class="upload" role="button">
+    <div style="font-size:28px">📁</div>
+    <div style="font-weight:600">Glisser / déposer ou cliquer pour sélectionner le fichier Excel</div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" />
+  </div>
+
+  <!-- STATS -->
+  <div class="stats" id="stats" style="display:none">
+    <div class="stat"><div style="font-size:20px" id="statTotal">0</div><div class="small">Lignes</div></div>
+    <div class="stat"><div id="statGroups" style="font-size:20px">0</div><div class="small">Groupes</div></div>
+    <div class="stat"><div id="statHigh" style="font-size:20px">0</div><div class="small">UR ≥ 1</div></div>
+  </div>
+
+  <!-- APERÇU -->
+  <div id="previewContainer" class="preview" style="display:none">
+    <h3>Aperçu (copiable dans Word) :</h3>
+    <div id="previewArea"></div>
+    <div class="notice" id="copyNotice">✅ Copié !</div>
+  </div>
+
+</div>
+
+<script>
+/* =====================================================================
+   CONFIGURATION COULEURS (INVERSION)
+===================================================================== */
+const COLOR_DARK_GREEN = "#90EE90";   // clair
+const COLOR_LIGHT_GREEN = "#006400";  // foncé
+const COLOR_RED = "#FF3333";
+
+/* =====================================================================
+   UPLOAD + CORRECTION DOUBLE OUVERTURE
+===================================================================== */
+const uploadArea=document.getElementById('uploadArea');
+const fileInput=document.getElementById('fileInput');
+const pickBtn=document.getElementById('pickBtn');
+const processBtn=document.getElementById('processBtn');
+const statsDiv=document.getElementById('stats');
+
+let workbookLoaded=null;
+
+uploadArea.addEventListener("click", () => fileInput.click());
+pickBtn.addEventListener("click", e => { e.stopPropagation(); fileInput.click(); });
+
+fileInput.addEventListener("change", e => {
+  if(e.target.files.length) handleFile(e.target.files[0]);
+});
+
+uploadArea.addEventListener("dragover", e => { e.preventDefault(); uploadArea.classList.add("dragover"); });
+uploadArea.addEventListener("dragleave", () => uploadArea.classList.remove("dragover"));
+uploadArea.addEventListener("drop", e => {
+  e.preventDefault(); uploadArea.classList.remove("dragover");
+  if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file){
+  if(!file.name.match(/\.(xlsx|xls)$/i)){ alert("Sélectionne un fichier Excel"); return; }
+  const reader=new FileReader();
+  reader.onload = evt => {
+    try{
+      workbookLoaded=XLSX.read(evt.target.result,{type:"array"});
+      processBtn.style.display="inline-block";
+      statsDiv.style.display="flex";
+    }catch(err){ alert("Erreur : "+err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* =====================================================================
+   PARSE / TRAITEMENT LICIEL
+===================================================================== */
+
+const previewArea=document.getElementById("previewArea");
+const previewContainer=document.getElementById("previewContainer");
+const statTotal=document.getElementById("statTotal");
+const statGroups=document.getElementById("statGroups");
+const statHigh=document.getElementById("statHigh");
+const copyNotice=document.getElementById("copyNotice");
+
+processBtn.addEventListener("click", ()=> processWorkbook(workbookLoaded));
+
+function parseNumber(v){
+  if(v==null) return NaN;
+  const s=String(v).replace(',','.').replace(/[^0-9.\-+eE]/g,'').trim();
+  return s===''?NaN:Number(s);
+}
+
+function splitLevelLocal(v){
+  if(!v) return {level:'',local:''};
+  const s=String(v);
+  let p=s.split(' - ');
+  if(p.length<2) p=s.split('-');
+  return {level:p[0].trim(), local:(p.slice(1).join('-')||'').trim()};
+}
+
+function processWorkbook(wb){
+  const sh=wb.Sheets[wb.SheetNames[0]];
+  const data=XLSX.utils.sheet_to_json(sh,{header:1,defval:''});
+  if(data.length<=1){ alert("Fichier vide"); return; }
+
+  const IDX={D:3,E:4,F:5,G:6,H:7,I:8,K:10,M:12,Q:16,S:18};
+
+  const rows=data.slice(1).map(r=>({
+    D:r[IDX.D]||'', E:r[IDX.E]||'', F:r[IDX.F]||'',
+    G:r[IDX.G]||'', H:r[IDX.H]||'', I:r[IDX.I]||'',
+    K:r[IDX.K]||'', M:r[IDX.M]||'', Q:r[IDX.Q]||'', S:r[IDX.S]||''
+  }));
+
+  const groups=new Map();
+  rows.forEach(r=>{
+    const k=String(r.D).trim();
+    if(!groups.has(k)) groups.set(k,[]);
+    groups.get(k).push(r);
+  });
+
+  const aoa=[], ge1=[];
+  const count={lt03:new Set(), btw:new Set(), ge1:new Set()};
+
+  for(const [k,items] of groups.entries()){
+    const {level,local}=splitLevelLocal(k);
+
+    aoa.push([level,'','','','','','','']);
+    aoa.push(['UR N°','Local','Zone','Unité de repérage','Substrat','Revêtement apparent','Résultat (mg/cm²)','Incertitude']);
+
+    items.forEach(it=>{
+      const lv=splitLevelLocal(it.D);
+      const localVal=lv.local||local;
+      const res=parseNumber(it.K);
+      const ur=String(it.F||'').trim();
+      const zone=it.S ? `${it.E} (${it.S})` : it.E || '';
+
+      if(!isNaN(res) && ur){
+        if(res<0.3) count.lt03.add(ur);
+        else if(res>=1) count.ge1.add(ur);
+        else count.btw.add(ur);
+      }
+
+      if(!isNaN(res) && res>=1){
+        ge1.push({niveau:lv.level,local:localVal,ur,mesure:res,etat:it.M});
+      }
+
+      aoa.push([ur,localVal,zone,it.G,it.H,it.I,it.K,it.Q]);
+    });
+
+    aoa.push([]);
+  }
+
+  const synth=[
+    ['Synthèse des tranches'],
+    ['Tranche','Nombre d’UR distinctes'],
+    ['< 0,3 mg/cm²',count.lt03.size],
+    ['0,3 - 0,99 mg/cm²',count.btw.size],
+    ['≥ 1 mg/cm²',count.ge1.size],
+    []
+  ];
+
+  const ge1table=[['Valeurs >= 1 mg/cm²'],['Niveau','Local','UR N°','Mesure >=1','État']];
+  if(ge1.length===0){
+    ge1table.push(['Néant','Néant','Néant','Néant','Néant']);
+  }else{
+    ge1.forEach(it=>ge1table.push([it.niveau,it.local,it.ur,it.mesure,it.etat]));
+  }
+
+  renderOutputPreview(aoa,synth,ge1table);
+
+  statTotal.textContent=rows.length;
+  statGroups.textContent=groups.size;
+  statHigh.textContent=count.ge1.size;
+}
+
+/* =====================================================================
+   AFFICHAGE + COLORISATION
+===================================================================== */
+
+function makeTableBlock(title, aoa, kind){
+  let html=`<div class="table-block" data-kind="${kind}">
+              <div class="block-title">${title}`;
+
+  if(kind!=='synth')
+    html+=`<button class="copy-btn" data-kind="${kind}">📋 Copier</button>`;
+
+  html+=`</div><table><tbody>`;
+
+  aoa.forEach((row,idx)=>{
+    const isTitle=row.length>0 && row[0] && row.slice(1).every(c=>c==='');
+    if(isTitle){
+      html+=`<tr><td colspan="${row.length}" style="background:#f2f2f2;">${row[0]}</td></tr>`;
+      return;
+    }
+
+    html+="<tr>";
+    for(let c=0;c<row.length;c++){
+      let v=row[c]||'', style='';
+
+      if(kind==='ge1' && c===4 && idx>1){
+        const txt=String(v).toLowerCase();
+        // Non dégradé = vert clair
+if (txt.includes("non dégrad"))
+    style = `background:${COLOR_DARK_GREEN};color:#000`;
+
+// État d’usage = vert foncé
+else if (txt.includes("usage"))
+    style = `background:${COLOR_LIGHT_GREEN};color:#fff`;
+
+// Dégradé = rouge
+else if (txt.includes("dégrad"))
+    style = `background:${COLOR_RED};color:#fff`;
+
+      }
+
+      if(kind!=='ge1' && c===6 && v!==''){
+        const n=parseNumber(v);
+        if(!isNaN(n)){
+          if(n < 0.3) style=`background:${COLOR_DARK_GREEN};color:#000`;
+          else if(n >= 1) style=`background:${COLOR_RED};color:#fff`;
+          else style=`background:${COLOR_LIGHT_GREEN};color:#fff`;
+        }
+      }
+
+      html+=`<td style="${style}">${v}</td>`;
+    }
+    html+="</tr>";
+  });
+
+  html+="</tbody></table></div>";
+  return html;
+}
+
+function renderOutputPreview(aoa,synth,ge1){
+  previewArea.innerHTML="";
+  previewArea.insertAdjacentHTML("beforeend", makeTableBlock("Synthèse des tranches",synth,"synth"));
+  previewArea.insertAdjacentHTML("beforeend", makeTableBlock("Tableau UR / pièces",aoa,"main"));
+  previewArea.insertAdjacentHTML("beforeend", makeTableBlock("Valeurs >= 1 mg/cm²",ge1,"ge1"));
+  previewContainer.style.display="block";
+  addCopyEvents();
+}
+
+/* =====================================================================
+   COPIE TABLEAU
+===================================================================== */
+
+function addCopyEvents(){
+  document.querySelectorAll(".copy-btn").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const kind=btn.getAttribute("data-kind");
+      const block=document.querySelector(`.table-block[data-kind="${kind}"]`);
+      const table=block.querySelector("table");
+      const css=`<style>table{border-collapse:collapse;width:100%;font-size:8pt;}
+      td,th{border:1px solid #000;padding:4px;vertical-align:top;}</style>`;
+      const htmlToCopy=css+table.outerHTML;
+
+      try{
+        if(navigator.clipboard && window.ClipboardItem){
+          const blob=new Blob([htmlToCopy],{type:"text/html"});
+          await navigator.clipboard.write([new ClipboardItem({'text/html':blob})]);
+        }else{
+          await navigator.clipboard.writeText(htmlToCopy);
+        }
+        copyNotice.style.display="block";
+        setTimeout(()=>copyNotice.style.display="none",1200);
+
+      }catch(err){ alert("Erreur : "+err.message); }
+    });
+  });
+}
+</script>
+
+</body>
+</html>
